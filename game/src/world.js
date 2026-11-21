@@ -25,6 +25,7 @@ export function createWorld(levelIndex) {
     pebbles: [],
     popups: [],
     events: [],
+    inbox: [],
     heard: [],
     stats: { time: 0, spotted: 0, nearMisses: 0, pebbles: 0 },
     outcome: null,
@@ -56,6 +57,11 @@ function handleEvents(world) {
         world.stats.nearMisses += 1;
         popup(world, 'NEAR MISS', `${event.guard.name} lost interest`, '#ffc04d');
         break;
+      case 'hide': {
+        const hunter = world.guards.find((g) => g.state === 'ALERT' || g.state === 'SEARCH');
+        popup(world, 'HIDDEN', hunter ? `${hunter.name} lost you: no lantern sees into a barrel` : 'no lantern sees into a barrel', '#5ff2ff');
+        break;
+      }
       case 'ledger':
         popup(world, 'LEDGER TAKEN', 'the EXIT gate is open: get out unseen', '#ffd86b');
         break;
@@ -73,7 +79,9 @@ function handleEvents(world) {
 
 /** Advance the level by dt seconds; intent = { dx, dy, sneak, run }. Returns this step's events. */
 export function stepWorld(world, intent, dt) {
-  world.events = [];
+  // Actions taken between steps (hiding, throwing) wait in the inbox and are handled with this step.
+  world.events = world.inbox;
+  world.inbox = [];
   if (world.outcome) return world.events;
   world.clock += dt;
   world.stats.time += dt;

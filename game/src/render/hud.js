@@ -164,6 +164,18 @@ export function drawRoster(ctx, world) {
   }
 }
 
+/** The tip for this moment of play: what to do about the guard that matters most right now. */
+export function contextTip(world) {
+  const p = world.player;
+  const hunter = world.guards.find((g) => g.state === 'ALERT' || g.state === 'SEARCH');
+  const watcher = world.guards.find((g) => g.seesPlayer && g.state !== 'ALERT');
+  if (p.hiddenIn && hunter) return `Stay put: ${hunter.name} will search, give up, and walk back to the patrol route.`;
+  if (hunter && hunter.seesPlayer) return `${hunter.name} sees you! Break line of sight: round a wall, into reeds, or a barrel (E).`;
+  if (watcher) return `${watcher.name} is noticing you: back into the dark before the meter fills!`;
+  if (p.hasLedger) return 'Ledger taken: the EXIT gate is open. Stay in the shadows on the way out.';
+  return world.def.tip;
+}
+
 export function drawRibbon(ctx, world, tip) {
   const y = MAP_ORIGIN.y + 600 + 6;
   ctx.fillStyle = '#0b0f1f';
@@ -175,7 +187,7 @@ export function drawRibbon(ctx, world, tip) {
   ctx.roundRect(12, y + 8, 40, 20, 6);
   ctx.fill();
   text(ctx, 'TIP', 32, y + 18.5, 12, '#10131f', 'center');
-  text(ctx, tip ?? world.def.tip, 62, y + 18.5, 13, '#e8ecf6', 'left', 'normal');
+  text(ctx, tip ?? contextTip(world), 62, y + 18.5, 13, '#e8ecf6', 'left', 'normal');
   text(ctx, 'WASD move · SHIFT sneak · SPACE run · CLICK throw pebble · E hide in barrel · H field guide · P pause', 12, y + 42, 12, '#9fb3d9', 'left', 'normal');
 }
 
@@ -184,7 +196,7 @@ export function drawPopups(ctx, world) {
     const t = p.age / p.life;
     const alpha = t < 0.85 ? 1 : (1 - t) / 0.15;
     const scale = t < 0.08 ? 0.7 + (t / 0.08) * 0.3 : 1;
-    const cx = MAP_ORIGIN.x + 510;
+    const cx = MAP_ORIGIN.x + 770;
     const cy = MAP_ORIGIN.y + 70 + i * 82;
     ctx.save();
     ctx.globalAlpha = alpha;

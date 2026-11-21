@@ -7,7 +7,7 @@ import { TILE } from '../config.js';
 export function barrelInReach(world) {
   const player = world.player;
   let best = null;
-  let bestDist = 40;
+  let bestDist = 46;
   for (const barrel of world.map.barrels) {
     const d = Math.hypot(barrel.x - player.x, barrel.y - player.y);
     if (d < bestDist) {
@@ -25,7 +25,7 @@ export function toggleHide(world) {
     player.y = player.outY;
     player.hiddenIn = null;
     player.seenHiding = false;
-    world.events.push({ type: 'unhide' });
+    world.inbox.push({ type: 'unhide' });
     return;
   }
   const barrel = barrelInReach(world);
@@ -37,5 +37,5 @@ export function toggleHide(world) {
   player.hiddenIn = barrel;
   player.x = barrel.x;
   player.y = barrel.y;
-  world.events.push({ type: 'hide' });
+  world.inbox.push({ type: 'hide' });
 }

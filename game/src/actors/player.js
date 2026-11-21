@@ -94,6 +94,6 @@ export function throwPebble(world, tx, ty) {
     fromX: player.x, fromY: player.y, toX: player.x + (dx / dist) * land, toY: player.y + (dy / dist) * land, t: 0, flight: 0.25 + land / 900,
   });
   world.stats.pebbles += 1;
-  world.events.push({ type: 'throw' });
+  world.inbox.push({ type: 'throw' });
   return true;
 }

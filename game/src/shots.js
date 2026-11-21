@@ -8,6 +8,8 @@ import { createWorld, stepWorld, rankOf } from './world.js';
 import { findPath } from './ai/pathfinding.js';
 import { throwPebble } from './actors/player.js';
 import { recordRank } from './systems/progress.js';
+import { toggleHide } from './systems/hiding.js';
+import { ALERT } from './ai/guard-states.js';
 import { SCREEN_PLAY, SCREEN_RESULTS, SCREEN_TITLE } from './game-flow.js';
 
 const IDLE = { dx: 0, dy: 0, sneak: true, run: false };
@@ -52,12 +54,17 @@ export function stageShot(name, game) {
     return;
   }
   if (name === 'cover') {
-    // LANTERN ROW: the thief waits in the dark behind the crates, then throws a pebble past the
-    // lamp; two guards turn amber and go to check the clatter while the third keeps patrolling.
+    // LANTERN ROW: MAUD spots the thief on the cobbles and raises the alarm. The thief throws a
+    // pebble over the canal, runs and climbs into a barrel: MAUD (red, alert) chases the clatter,
+    // WREN (amber, suspicious) goes to look at it, OTTO (pale) keeps his patrol.
     const world = createWorld(1);
-    wait(world, 21);
-    walkTo(world, 12, 6);
-    throwAt(world, 20, 5, 1.0);
+    wait(world, 12);
+    walkTo(world, 12, 12, 'walk');
+    for (let t = 0; t < 22 && !world.guards.some((g) => g.state === ALERT); t += STEP) stepWorld(world, IDLE, STEP);
+    throwPebble(world, 13 * TILE + TILE / 2, 6 * TILE + TILE / 2);
+    walkTo(world, 14, 14, 'run');
+    toggleHide(world);
+    wait(world, 0.2);
     game.world = world;
     game.screen = SCREEN_PLAY;
     game.guide = true;
