@@ -64,7 +64,7 @@ export function drawLighting(ctx, world, width, height, time) {
   const d = s.getContext('2d');
   d.globalCompositeOperation = 'source-over';
   d.clearRect(0, 0, width, height);
-  d.fillStyle = 'rgba(4,7,22,0.8)';
+  d.fillStyle = 'rgba(6,10,30,0.76)';
   d.fillRect(0, 0, width, height);
   d.globalCompositeOperation = 'destination-out';
   for (const lamp of world.map.lamps) {
@@ -91,7 +91,7 @@ export function drawLighting(ctx, world, width, height, time) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for (const lamp of world.map.lamps) {
-    ctx.fillStyle = radial(ctx, lamp.x, lamp.y, lamp.radius, 'rgba(255,170,70,0.28)', 'rgba(255,140,40,0)');
+    ctx.fillStyle = radial(ctx, lamp.x, lamp.y, lamp.radius, 'rgba(255,170,70,0.2)', 'rgba(255,140,40,0)');
     lampPolygon(ctx, lamp);
     ctx.fill();
   }

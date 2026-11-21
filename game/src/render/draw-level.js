@@ -13,7 +13,7 @@ function hash(x, y) {
 }
 
 function drawPlanks(ctx, x, y, tx, ty, bridge) {
-  const base = bridge ? ['#a2784a', '#93693f', '#ab8150'] : ['#7d6047', '#735740', '#86684c'];
+  const base = bridge ? ['#a2784a', '#93693f', '#ab8150'] : ['#5f5a5e', '#565156', '#676166'];
   for (let i = 0; i < 3; i += 1) {
     ctx.fillStyle = base[(i + tx + ty) % 3];
     if (bridge) ctx.fillRect(x + i * 10, y, 10, TILE);
