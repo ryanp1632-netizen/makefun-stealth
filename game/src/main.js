@@ -13,6 +13,8 @@ const ctx = canvas.getContext('2d');
 const status = document.getElementById('status');
 
 const game = createGame();
+// Exposed for the play-test script (tools/play-test.mjs) and for curious players in the console.
+window.hushwater = game;
 const shot = new URLSearchParams(location.search).get('shot');
 
 if (shot) {
