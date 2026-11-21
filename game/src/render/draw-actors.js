@@ -277,6 +277,45 @@ function drawGuardBody(ctx, guard, time) {
   ctx.restore();
 }
 
+/** What a guard says out loud in its current mood (none while calmly patrolling). */
+function speechOf(guard) {
+  switch (guard.state) {
+    case SUSPICIOUS:
+      return 'WHAT WAS THAT?';
+    case INVESTIGATE:
+      return "WHO'S THERE?";
+    case ALERT:
+      return guard.seesPlayer ? 'THERE YOU ARE!' : 'AFTER THEM!';
+    case SEARCH:
+      return "WHERE'D THEY GO?";
+    case TRACKING:
+      return 'SCANNING...';
+    case ALARM:
+      return 'ALARM!';
+    default:
+      return guard.state === 'RETURN' ? 'JUST RATS...' : null;
+  }
+}
+
+function speechBubble(ctx, x, y, words, color) {
+  ctx.font = 'bold 12px "Trebuchet MS", Verdana, sans-serif';
+  const w = ctx.measureText(words).width + 14;
+  ctx.fillStyle = 'rgba(8,10,20,0.92)';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - 10, w, 20, 6);
+  ctx.moveTo(x - 4, y + 10);
+  ctx.lineTo(x, y + 16);
+  ctx.lineTo(x + 4, y + 10);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(words, x, y + 0.5);
+}
+
 export function drawGuards(ctx, world, time) {
   for (const guard of world.guards) {
     if (guard.state === SEARCH || (guard.state === ALERT && !guard.seesPlayer)) {
@@ -319,6 +358,8 @@ export function drawGuards(ctx, world, time) {
       ctx.textBaseline = 'middle';
       ctx.fillText(badge.mark, guard.x + 20, tagY - 5 + bob);
     }
+    const says = speechOf(guard);
+    if (says) speechBubble(ctx, guard.x, tagY - 30, says, `rgb(${r},${g},${b})`);
     if (guard.heardAt && guard.state !== ALERT) {
       ctx.strokeStyle = `rgba(255,214,90,${1 - guard.heardAt.age / 1.6})`;
       ctx.lineWidth = 1.5;

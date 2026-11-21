@@ -26,7 +26,7 @@ export function moodColor(guard) {
     case SEARCH:
       return [255, 178, 48];
     default:
-      return guard.kind === 'camera' ? [140, 230, 255] : [255, 241, 196];
+      return guard.kind === 'camera' ? [120, 255, 214] : [140, 215, 255];
   }
 }
 
@@ -100,7 +100,7 @@ export function drawLighting(ctx, world, width, height, time) {
     const [r, g, b] = moodColor(guard);
     const angry = guard.state === ALERT || guard.state === ALARM;
     const wary = !angry && [SUSPICIOUS, INVESTIGATE, SEARCH, TRACKING].includes(guard.state);
-    const strength = angry ? 0.6 : wary ? 0.5 : 0.24;
+    const strength = angry ? 0.6 : wary ? 0.5 : 0.36;
     ctx.fillStyle = radial(ctx, guard.x, guard.y, guard.sightRange, `rgba(${r},${g},${b},${strength})`, `rgba(${r},${g},${b},0.04)`);
     polygon(ctx, guard.cone);
     ctx.fill();

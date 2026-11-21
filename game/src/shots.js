@@ -67,7 +67,7 @@ export function stageShot(name, game) {
     wait(world, 0.2);
     game.world = world;
     game.screen = SCREEN_PLAY;
-    game.guide = true;
+    game.guide = false;
     game.time = world.clock;
     return;
   }

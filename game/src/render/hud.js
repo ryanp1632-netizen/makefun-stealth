@@ -93,75 +93,243 @@ export function drawTopBar(ctx, world) {
   text(ctx, String(world.stats.nearMisses), 1160, 36, 18, '#ffc04d');
 }
 
-export function drawRoster(ctx, world) {
-  const x = PANEL.x;
-  let y = PANEL.y;
-  const walkers = world.guards;
-  const rowH = 46;
-  const rosterH = 34 + walkers.length * rowH;
-  panelBox(ctx, x, y, PANEL.w, rosterH);
-  text(ctx, 'PATROL ROSTER', x + 12, y + 17, 14, '#ffd86b');
-  text(ctx, `${walkers.length} on watch`, x + PANEL.w - 12, y + 17, 11, '#8a93ad', 'right', 'normal');
-  y += 34;
-  for (const guard of walkers) {
+const DETECTION_HINTS = {
+  SPOTTED: ['#ff4d4d', 'They see you! Break line of sight.'],
+  HUNTED: ['#ff6a3d', 'Out of sight. Stay hidden while they search.'],
+  HIDDEN: ['#5ff2ff', 'In a barrel: no lantern can see you.'],
+  SUSPECTED: ['#ffb230', 'A guard is staring. Leave the cone!'],
+  NOTICED: ['#ffd24d', 'Something caught an eye. Into the dark.'],
+  'IN LIGHT': ['#ffe9a8', 'Lit floor: guards see you from far.'],
+  UNSEEN: ['#7dffad', 'In shadow. Keep to the dark.'],
+};
+
+function bar(ctx, x, y, w, share, color) {
+  ctx.fillStyle = '#1b2238';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, 7, 3);
+  ctx.fill();
+  if (share > 0) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(x, y, Math.max(6, w * Math.min(1, share)), 7, 3);
+    ctx.fill();
+  }
+}
+
+/** The big detection status: one word for how seen the thief is, what it means, and the meter. */
+function drawDetectionBox(ctx, world, x, y, w) {
+  const word = detectionWord(world);
+  const [color, hint] = DETECTION_HINTS[word];
+  const mark = word === 'SPOTTED' || word === 'HUNTED' ? ' !' : word === 'SUSPECTED' || word === 'NOTICED' ? ' ?' : '';
+  panelBox(ctx, x, y, w, 104);
+  text(ctx, 'DETECTION', x + 12, y + 15, 11, '#8a93ad');
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x + 10, y + 26, w - 20, 38, 7);
+  ctx.fill();
+  text(ctx, word + mark, x + w / 2, y + 46, 22, '#10131f', 'center');
+  text(ctx, hint, x + w / 2, y + 77, 11, '#e2e8f5', 'center', 'normal');
+  const { level } = detectionLevel(world);
+  bar(ctx, x + 12, y + 90, w - 24, word === 'SPOTTED' || word === 'HUNTED' ? 1 : level, color);
+  return y + 104;
+}
+
+/** How visible and how loud the thief is right now. */
+function drawSenses(ctx, world, x, y, w) {
+  const p = world.player;
+  panelBox(ctx, x, y, w, 56);
+  const seen = p.hiddenIn ? ['HIDDEN', 0, '#5ff2ff'] : p.lit ? ['IN LIGHT', 1, '#ffd86b'] : ['IN SHADOW', 0.3, '#7dffad'];
+  const loud = p.hiddenIn || p.stance === 'sneak' || !p.moving ? ['SILENT', 0, '#7dffad'] : p.stance === 'run' ? ['LOUD', 1, '#ff6a5a'] : ['SOFT', 0.35, '#ffd24d'];
+  text(ctx, 'VISIBILITY', x + 12, y + 14, 10, '#8a93ad');
+  text(ctx, seen[0], x + w - 12, y + 14, 11, seen[2], 'right');
+  bar(ctx, x + 12, y + 22, w - 24, seen[1], seen[2]);
+  text(ctx, 'NOISE', x + 12, y + 38, 10, '#8a93ad');
+  text(ctx, loud[0], x + w - 12, y + 38, 11, loud[2], 'right');
+  bar(ctx, x + 12, y + 46, w - 24, loud[1], loud[2]);
+  return y + 56;
+}
+
+/** Every guard on the level with its mood word. */
+function drawGuardList(ctx, world, x, y, w) {
+  const rowH = 22;
+  const h = 28 + world.guards.length * rowH;
+  panelBox(ctx, x, y, w, h);
+  text(ctx, 'GUARDS', x + 12, y + 15, 11, '#8a93ad');
+  text(ctx, `${world.guards.length} on watch`, x + w - 12, y + 15, 10, '#8a93ad', 'right', 'normal');
+  world.guards.forEach((guard, i) => {
+    const ry = y + 36 + i * rowH;
     const [r, g, b] = moodColor(guard);
-    const mood = `rgb(${r},${g},${b})`;
     ctx.fillStyle = guard.coat;
     ctx.beginPath();
-    if (guard.kind === 'camera') ctx.rect(x + 12, y + 8, 14, 14);
-    else if (guard.kind === 'hound') ctx.ellipse(x + 19, y + 15, 9, 6, 0, 0, Math.PI * 2);
-    else ctx.arc(x + 19, y + 15, 8, 0, Math.PI * 2);
+    if (guard.kind === 'camera') ctx.rect(x + 13, ry - 6, 12, 12);
+    else if (guard.kind === 'hound') ctx.ellipse(x + 19, ry, 8, 5, 0, 0, Math.PI * 2);
+    else ctx.arc(x + 19, ry, 6, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.stroke();
-    text(ctx, guard.name, x + 34, y + 10, 13, '#e8ecf6');
-    text(ctx, guard.kind === 'camera' ? 'wall beacon' : guard.kind === 'hound' ? 'hound: keen ears' : 'lantern guard', x + 34, y + 25, 10, '#8a93ad', 'left', 'normal');
+    text(ctx, guard.name, x + 32, ry, 12, '#e8ecf6');
     const word = stateWord(guard);
     ctx.font = `bold 10px ${FONT}`;
-    const w = ctx.measureText(word).width + 12;
-    ctx.fillStyle = mood;
+    const cw = ctx.measureText(word).width + 12;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
     ctx.beginPath();
-    ctx.roundRect(x + PANEL.w - 12 - w, y + 3, w, 16, 8);
+    ctx.roundRect(x + w - 12 - cw, ry - 8, cw, 16, 8);
     ctx.fill();
-    text(ctx, word, x + PANEL.w - 12 - w / 2, y + 11.5, 10, '#10131f', 'center');
-    ctx.fillStyle = '#1b2238';
-    ctx.fillRect(x + PANEL.w - 84, y + 25, 72, 5);
-    ctx.fillStyle = mood;
-    ctx.fillRect(x + PANEL.w - 84, y + 25, 72 * guard.suspicion, 5);
-    ctx.strokeStyle = '#242c45';
-    ctx.beginPath();
-    ctx.moveTo(x + 10, y + rowH - 6);
-    ctx.lineTo(x + PANEL.w - 10, y + rowH - 6);
-    ctx.stroke();
-    y += rowH;
-  }
-  y += 10;
-  const legendH = 92;
-  panelBox(ctx, x, y, PANEL.w, legendH);
-  text(ctx, 'VISION CONES', x + 12, y + 16, 12, '#ffd86b');
-  const rows = [['#fff1c4', 'pale: patrolling'], ['#ffb230', 'amber "?": suspicious'], ['#ff4040', 'red "!": alert, chasing']];
-  rows.forEach(([c, t], i) => {
-    ctx.fillStyle = c;
-    ctx.beginPath();
-    ctx.moveTo(x + 14, y + 36 + i * 19);
-    ctx.lineTo(x + 34, y + 29 + i * 19);
-    ctx.lineTo(x + 34, y + 43 + i * 19);
-    ctx.closePath();
-    ctx.fill();
-    text(ctx, t, x + 42, y + 36 + i * 19, 11, '#d5dbea', 'left', 'normal');
+    text(ctx, word, x + w - 12 - cw / 2, ry + 0.5, 10, '#10131f', 'center');
   });
-  y += legendH + 10;
-  const rulesH = Math.max(60, PANEL.y + PANEL.h - y);
-  panelBox(ctx, x, y, PANEL.w, rulesH);
-  text(ctx, 'WIN', x + 12, y + 17, 12, '#7dffad');
-  text(ctx, 'take the ledger, reach EXIT', x + 46, y + 17, 11, '#d5dbea', 'left', 'normal');
-  text(ctx, 'LOSE', x + 12, y + 37, 12, '#ff6a5a');
-  text(ctx, 'an alert guard catches you', x + 46, y + 37, 11, '#d5dbea', 'left', 'normal');
-  if (rulesH > 80) {
-    text(ctx, 'RANK', x + 12, y + 57, 12, '#ffd86b');
-    text(ctx, 'never spotted = GHOST', x + 46, y + 57, 11, '#d5dbea', 'left', 'normal');
+  return y + h;
+}
+
+/** Small drawn icons for the legend, one per thing on the map. */
+function legendIcon(ctx, kind, cx, cy) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  switch (kind) {
+    case 'guard':
+      ctx.fillStyle = 'rgba(140,215,255,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(-4, 0);
+      ctx.lineTo(9, -7);
+      ctx.lineTo(9, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#3fd0e0';
+      ctx.beginPath();
+      ctx.arc(-4, 0, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      break;
+    case 'crate':
+      ctx.fillStyle = '#c98a3e';
+      ctx.fillRect(-7, -7, 14, 14);
+      ctx.strokeStyle = '#7a4a1c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-6, -6);
+      ctx.lineTo(6, 6);
+      ctx.moveTo(6, -6);
+      ctx.lineTo(-6, 6);
+      ctx.stroke();
+      break;
+    case 'reeds':
+      ctx.fillStyle = '#2f4a26';
+      ctx.fillRect(-7, -7, 14, 14);
+      ctx.strokeStyle = '#7fb04f';
+      ctx.lineWidth = 1.5;
+      for (let i = -4; i <= 4; i += 4) {
+        ctx.beginPath();
+        ctx.moveTo(i, 6);
+        ctx.lineTo(i + 1, -6);
+        ctx.stroke();
+      }
+      break;
+    case 'barrel':
+      ctx.fillStyle = '#8c4f2a';
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3a3f47';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      break;
+    case 'lamp': {
+      const glow = ctx.createRadialGradient(0, 0, 1, 0, 0, 9);
+      glow.addColorStop(0, '#ffe9a8');
+      glow.addColorStop(1, 'rgba(255,170,70,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, 9, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'beacon':
+      ctx.fillStyle = '#596384';
+      ctx.fillRect(-7, -5, 12, 10);
+      ctx.fillStyle = '#8fe8ff';
+      ctx.beginPath();
+      ctx.arc(5, 0, 3, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'prints':
+      ctx.fillStyle = '#d6ecff';
+      for (const [px, py] of [[-5, -3], [0, 3], [5, -3]]) {
+        ctx.beginPath();
+        ctx.ellipse(px, py, 2.5, 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case 'noise':
+      ctx.strokeStyle = '#ffd65a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    default:
+      ctx.fillStyle = '#1f6b45';
+      ctx.fillRect(-6, -7, 12, 14);
+      ctx.strokeStyle = '#7dffad';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-6, -7, 12, 14);
   }
+  ctx.restore();
+}
+
+const LEGEND = [
+  ['guard', 'Guard + lantern cone'],
+  ['crate', 'Crate / wall: blocks sight'],
+  ['reeds', 'Reeds: sneak = unseen'],
+  ['barrel', 'Barrel: E to hide inside'],
+  ['lamp', 'Lamp light: you are seen'],
+  ['beacon', 'Beacon: sweeping eye'],
+  ['prints', 'Footprints: guard path'],
+  ['noise', 'Ring: noise guards hear'],
+  ['exit', 'Exit: opens with ledger'],
+];
+
+function drawLegend(ctx, x, y, w) {
+  const rowH = 17;
+  const h = 26 + LEGEND.length * rowH;
+  panelBox(ctx, x, y, w, h);
+  text(ctx, 'LEGEND', x + 12, y + 14, 11, '#8a93ad');
+  LEGEND.forEach(([kind, words], i) => {
+    const ry = y + 32 + i * rowH;
+    legendIcon(ctx, kind, x + 20, ry);
+    text(ctx, words, x + 36, ry + 0.5, 11, '#d5dbea', 'left', 'normal');
+  });
+  return y + h;
+}
+
+/** The side panel: detection status, visibility and noise, the guards, the legend and the rules. */
+export function drawRoster(ctx, world) {
+  const x = PANEL.x;
+  const w = PANEL.w;
+  let y = drawDetectionBox(ctx, world, x, PANEL.y, w) + 6;
+  y = drawSenses(ctx, world, x, y, w) + 6;
+  y = drawGuardList(ctx, world, x, y, w) + 6;
+  y = drawLegend(ctx, x, y, w) + 6;
+  const rulesH = PANEL.y + PANEL.h - y;
+  if (rulesH < 30) return;
+  panelBox(ctx, x, y, w, rulesH);
+  const rows = [
+    ['WIN', '#7dffad', 'ledger + exit, unseen'],
+    ['LOSE', '#ff6a5a', 'an alert guard catches you'],
+    ['MOVE', '#5ff2ff', 'WASD · SHIFT sneak · SPACE run'],
+    ['ACT', '#5ff2ff', 'CLICK pebble · E hide · P pause'],
+  ];
+  const step = Math.min(22, (rulesH - 8) / rows.length);
+  rows.forEach(([tag, color, words], i) => {
+    const ry = y + 4 + step * (i + 0.5);
+    if (ry > y + rulesH - 6) return;
+    text(ctx, tag, x + 12, ry, 11, color);
+    text(ctx, words, x + 50, ry, 11, '#d5dbea', 'left', 'normal');
+  });
 }
 
 /** The tip for this moment of play: what to do about the guard that matters most right now. */
